@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.venv
+.git
+.gitignore
+build
+send_to_kindle.egg-info
+data
+artifacts

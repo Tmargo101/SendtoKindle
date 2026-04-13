@@ -1,0 +1,66 @@
+Metadata-Version: 2.4
+Name: send-to-kindle
+Version: 0.1.0
+Summary: Private service that converts article URLs into EPUB files and emails them to Kindle devices.
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi<1.0,>=0.115
+Requires-Dist: uvicorn[standard]<1.0,>=0.34
+Requires-Dist: httpx<1.0,>=0.28
+Requires-Dist: trafilatura<3.0,>=2.0
+Requires-Dist: ebooklib>=0.18
+Requires-Dist: aiosmtplib<4.0,>=3.0
+Requires-Dist: PyYAML<7.0,>=6.0
+Requires-Dist: beautifulsoup4<5.0,>=4.12
+Provides-Extra: dev
+Requires-Dist: pytest<9.0,>=8.0; extra == "dev"
+
+# Send to Kindle
+
+Private service that accepts article URLs, converts them into EPUB files, and emails them to a Kindle address.
+
+## Features
+- FastAPI endpoint for queueing article URLs.
+- SQLite-backed job queue shared by API and worker services.
+- Article extraction with `trafilatura`.
+- Text-first EPUB generation with optional lead image support.
+- SMTP delivery to Kindle email addresses.
+- Dockerized API and worker deployment via Docker Compose.
+
+## Quick start
+1. Use Python 3.12+ for local runs, or use Docker.
+2. Copy `.env.example` to `.env` and fill in SMTP settings.
+3. Copy `config/users.example.yaml` to `config/users.yaml`.
+4. Replace `token_hash` with `sha256(<your-api-token>)`, for example:
+   ```bash
+   python3 - <<'PY'
+   import hashlib
+   print(hashlib.sha256(b"replace-me").hexdigest())
+   PY
+   ```
+5. Start the stack:
+   ```bash
+   docker compose up --build
+   ```
+6. Queue an article:
+   ```bash
+   curl -X POST http://localhost:8000/v1/articles \
+     -H 'Authorization: Bearer <your-api-token>' \
+     -H 'Content-Type: application/json' \
+     -d '{"url":"https://example.com/article"}'
+   ```
+
+## Running without Docker
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install .
+send-to-kindle api
+send-to-kindle worker
+```
+
+## Notes
+- Only public `http` and `https` article URLs are supported.
+- Authentication is static bearer-token based.
+- User definitions are loaded from `config/users.yaml` on process start.
+- Generated EPUB files are kept temporarily for retry/debug and cleaned up by the worker.
