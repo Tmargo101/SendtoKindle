@@ -78,7 +78,7 @@ class ApiAuthTests(unittest.TestCase):
     def test_valid_token_downloads_epub(self) -> None:
         article = ArticleContent(
             source_url="https://example.com/article",
-            title="Test Article",
+            title="Sam Altman responds to ‘incendiary’ New Yorker article after attack on his home",
             author=None,
             site_name=None,
             published_at=None,
@@ -100,7 +100,10 @@ class ApiAuthTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["content-type"], "application/epub+zip")
-        self.assertIn('attachment; filename="test-article.epub"', response.headers["content-disposition"])
+        self.assertIn(
+            'attachment; filename="Sam Altman responds to \'incendiary\' New Yorker article after attack on his home.epub"',
+            response.headers["content-disposition"],
+        )
         self.assertEqual(response.content, b"epub-bytes")
         self.assertFalse(epub_path.exists())
 

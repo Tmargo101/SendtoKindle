@@ -12,6 +12,7 @@ from starlette.background import BackgroundTask
 
 from send_to_kindle.auth import AuthenticationError, UserRegistry
 from send_to_kindle.dependencies import get_job_store, get_settings, get_user_registry
+from send_to_kindle.filenames import build_epub_filename
 from send_to_kindle.models import ArticleRequest, JobDetailResponse, JobResponse
 from send_to_kindle.repository import JobStore
 from send_to_kindle.worker import ProcessingFailure, Worker
@@ -81,14 +82,14 @@ async def download_article(
 
     worker = Worker(get_settings(), get_job_store(), users)
     try:
-        _, epub_path = await worker.create_epub(str(payload.url))
+        article, epub_path = await worker.create_epub(str(payload.url))
     except Exception as exc:
         raise _map_processing_exception(exc) from exc
 
     return FileResponse(
         path=epub_path,
         media_type="application/epub+zip",
-        filename=epub_path.name,
+        filename=build_epub_filename(article.title),
         background=BackgroundTask(_delete_file, epub_path),
     )
 

@@ -121,6 +121,8 @@ pip install .
 send-to-kindle api
 ```
 
+Local runs also read `./.env` automatically if that file exists in the repo root, so the SMTP settings from the quick-start flow apply outside Docker too.
+
 When running outside Docker, the app stores its data under the current working directory by default:
 - `./data/send_to_kindle.db`
 - `./artifacts/`

@@ -58,3 +58,35 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(settings.data_dir, base_dir / "custom-data")
         self.assertEqual(settings.artifacts_dir, base_dir / "custom-artifacts")
         self.assertEqual(settings.database_path, base_dir / "db" / "jobs.sqlite")
+
+    def test_loads_smtp_settings_from_dotenv_in_working_directory(self) -> None:
+        env_path = Path(self.temp_dir.name) / ".env"
+        env_path.write_text(
+            "\n".join(
+                [
+                    "STK_SMTP_HOST=smtp.gmail.com",
+                    "STK_SMTP_PORT=587",
+                    "STK_SMTP_USERNAME=tester@example.com",
+                    "STK_SMTP_PASSWORD=secret",
+                    "STK_SMTP_SENDER=tester@example.com",
+                ]
+            ),
+            encoding="utf-8",
+        )
+
+        settings = load_settings()
+
+        self.assertEqual(settings.smtp_host, "smtp.gmail.com")
+        self.assertEqual(settings.smtp_port, 587)
+        self.assertEqual(settings.smtp_username, "tester@example.com")
+        self.assertEqual(settings.smtp_password, "secret")
+        self.assertEqual(settings.smtp_sender, "tester@example.com")
+        self.assertFalse(settings.smtp_use_tls)
+
+    def test_explicit_tls_env_overrides_port_based_default(self) -> None:
+        os.environ["STK_SMTP_PORT"] = "465"
+        os.environ["STK_SMTP_USE_TLS"] = "false"
+
+        settings = load_settings()
+
+        self.assertFalse(settings.smtp_use_tls)

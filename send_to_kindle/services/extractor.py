@@ -64,10 +64,13 @@ def _extract_metadata(html: str, source_url: str) -> Metadata:
     soup = BeautifulSoup(html, "html.parser")
 
     title = None
+    page_heading = _find_heading_text(soup)
+    if page_heading:
+        title = page_heading
     if soup.title and soup.title.string:
-        title = soup.title.string.strip()
+        title = title or soup.title.string.strip()
     og_title = _find_meta_content(soup, ["og:title", "twitter:title"])
-    if og_title:
+    if og_title and not title:
         title = og_title
 
     return Metadata(
@@ -87,6 +90,14 @@ def _find_meta_content(soup: BeautifulSoup, names: list[str]) -> Optional[str]:
             if content:
                 return content
     return None
+
+
+def _find_heading_text(soup: BeautifulSoup) -> Optional[str]:
+    heading = soup.find("h1")
+    if not heading:
+        return None
+    text = heading.get_text(" ", strip=True)
+    return text or None
 
 
 def _normalize_url(url: Optional[str], source_url: str) -> Optional[str]:

@@ -37,12 +37,43 @@ class Settings:
 DEFAULT_APP_NAME = "send-to-kindle"
 
 
+def _load_dotenv_file(path: Path) -> None:
+    if not path.exists():
+        return
+
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        if not key or key in os.environ:
+            continue
+
+        value = value.strip()
+        if value and len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        os.environ[key] = value
+
+
+def _get_bool_env(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 def load_settings() -> Settings:
     base_dir = Path(os.getenv("STK_BASE_DIR") or Path.cwd()).resolve()
+    _load_dotenv_file(base_dir / ".env")
+    base_dir = Path(os.getenv("STK_BASE_DIR") or base_dir).resolve()
     data_dir = Path(os.getenv("STK_DATA_DIR") or (base_dir / "data")).resolve()
     artifacts_dir = Path(os.getenv("STK_ARTIFACTS_DIR") or (base_dir / "artifacts")).resolve()
     database_path = Path(os.getenv("STK_DATABASE_PATH") or (data_dir / "send_to_kindle.db")).resolve()
     users_config_path = Path(os.getenv("STK_USERS_CONFIG_PATH") or (base_dir / "config" / "users.yaml")).resolve()
+    smtp_port = int(os.getenv("STK_SMTP_PORT", "587"))
+    default_smtp_use_tls = smtp_port == 465
 
     return Settings(
         app_name=os.getenv("STK_APP_NAME", DEFAULT_APP_NAME),
@@ -52,11 +83,11 @@ def load_settings() -> Settings:
         database_path=database_path,
         users_config_path=users_config_path,
         smtp_host=os.getenv("STK_SMTP_HOST", "localhost"),
-        smtp_port=int(os.getenv("STK_SMTP_PORT", "587")),
+        smtp_port=smtp_port,
         smtp_username=os.getenv("STK_SMTP_USERNAME") or None,
         smtp_password=os.getenv("STK_SMTP_PASSWORD") or None,
         smtp_sender=os.getenv("STK_SMTP_SENDER", "send-to-kindle@example.com"),
-        smtp_use_tls=os.getenv("STK_SMTP_USE_TLS", "true").lower() == "true",
+        smtp_use_tls=_get_bool_env("STK_SMTP_USE_TLS", default_smtp_use_tls),
         request_timeout_seconds=float(os.getenv("STK_REQUEST_TIMEOUT_SECONDS", "20")),
         max_redirects=int(os.getenv("STK_MAX_REDIRECTS", "5")),
         worker_poll_interval_seconds=float(os.getenv("STK_WORKER_POLL_INTERVAL_SECONDS", "2")),

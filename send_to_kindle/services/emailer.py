@@ -6,6 +6,7 @@ from pathlib import Path
 import aiosmtplib
 
 from send_to_kindle.config import Settings
+from send_to_kindle.filenames import build_epub_filename
 from send_to_kindle.models import ArticleContent, UserRecord
 
 
@@ -29,7 +30,7 @@ async def send_epub(settings: Settings, user: UserRecord, article: ArticleConten
         epub_bytes,
         maintype="application",
         subtype="epub+zip",
-        filename=epub_path.name,
+        filename=build_epub_filename(article.title),
     )
 
     try:
