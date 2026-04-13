@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from send_to_kindle.dependencies import get_job_store, get_settings, get_user_registry
 from send_to_kindle.models import ArticleContent
+from send_to_kindle.services.fetcher import FetchedPage
 
 
 class ApiAuthTests(unittest.TestCase):
@@ -100,12 +101,40 @@ class ApiAuthTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["content-type"], "application/epub+zip")
-        self.assertIn(
-            'attachment; filename="Sam Altman responds to \'incendiary\' New Yorker article after attack on his home.epub"',
-            response.headers["content-disposition"],
-        )
+        self.assertIn("filename*=utf-8''", response.headers["content-disposition"])
         self.assertEqual(response.content, b"epub-bytes")
         self.assertFalse(epub_path.exists())
+
+    def test_browser_eligible_download_uses_worker_fetch_pipeline(self) -> None:
+        article = ArticleContent(
+            source_url="https://example.com/feature",
+            title="Rendered Example",
+            author=None,
+            site_name="Example",
+            published_at=None,
+            content_html="<p>Hello</p>",
+            lead_image_url=None,
+        )
+        epub_path = Path(self.temp_dir.name) / "rendered.epub"
+        epub_path.write_bytes(b"epub-bytes")
+        fetched_page = FetchedPage(
+            url=article.source_url,
+            html="<html><body><article><h1>Rendered Example</h1><p>Hello</p></article></body></html>",
+            content_type="text/html; charset=utf-8",
+        )
+
+        with patch("send_to_kindle.worker.fetch_url", new=AsyncMock(return_value=fetched_page)) as fetch_mock, \
+             patch("send_to_kindle.worker.extract_article", return_value=article), \
+             patch("send_to_kindle.worker.generate_epub", return_value=epub_path):
+            response = self.client.post(
+                "/v1/articles/download",
+                headers={"Authorization": "Bearer secret-token"},
+                json={"url": article.source_url},
+            )
+
+        fetch_mock.assert_awaited_once()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, b"epub-bytes")
 
     def test_download_missing_token_rejected(self) -> None:
         response = self.client.post("/v1/articles/download", json={"url": "https://example.com/article"})

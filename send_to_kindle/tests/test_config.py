@@ -39,6 +39,8 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(settings.artifacts_dir, expected_root / "artifacts")
         self.assertEqual(settings.database_path, expected_root / "data" / "send_to_kindle.db")
         self.assertEqual(settings.users_config_path, expected_root / "config" / "users.yaml")
+        self.assertTrue(settings.browser_fetch_enabled)
+        self.assertEqual(settings.browser_fetch_timeout_seconds, 30)
 
         ensure_directories(settings)
         self.assertTrue(settings.data_dir.is_dir())
@@ -90,3 +92,12 @@ class SettingsTests(unittest.TestCase):
         settings = load_settings()
 
         self.assertFalse(settings.smtp_use_tls)
+
+    def test_browser_fetch_settings_can_be_overridden(self) -> None:
+        os.environ["STK_BROWSER_FETCH_ENABLED"] = "false"
+        os.environ["STK_BROWSER_FETCH_TIMEOUT_SECONDS"] = "45"
+
+        settings = load_settings()
+
+        self.assertFalse(settings.browser_fetch_enabled)
+        self.assertEqual(settings.browser_fetch_timeout_seconds, 45)

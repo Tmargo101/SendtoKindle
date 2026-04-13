@@ -75,6 +75,10 @@ Set these required values:
 - `STK_SMTP_PASSWORD`
 - `STK_SMTP_SENDER`
 
+Optional browser fetch settings:
+- `STK_BROWSER_FETCH_ENABLED=true`
+- `STK_BROWSER_FETCH_TIMEOUT_SECONDS=30`
+
 Leave this at its default unless you change the file mount:
 
 ```text
@@ -173,6 +177,11 @@ If jobs are accepted but Kindle email never arrives:
 - confirm your SMTP host, port, username, password, and sender are correct
 - confirm the sender address is allowed by your mail provider
 - confirm the sender address is approved in Amazon Send-to-Kindle settings
+
+If blocked or JS-heavy articles fail:
+- confirm you are using a current image build that includes the bundled Chromium runtime
+- confirm `STK_BROWSER_FETCH_ENABLED=true` in `.env`
+- inspect the container logs for whether the request succeeded via normal HTTP fetch or browser fallback
 
 If you want to inspect container state, run:
 

@@ -13,7 +13,13 @@ from send_to_kindle.repository import JobStore
 from send_to_kindle.services.emailer import DeliveryError, send_epub
 from send_to_kindle.services.epub import generate_epub
 from send_to_kindle.services.extractor import ExtractionError, extract_article
-from send_to_kindle.services.fetcher import FetchError, fetch_binary, fetch_url
+from send_to_kindle.services.fetcher import (
+    FetchError,
+    fetch_binary,
+    fetch_url,
+    fetch_url_in_browser,
+    should_retry_in_browser,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +66,7 @@ class Worker:
     async def create_epub(self, source_url: str) -> tuple[ArticleContent, Path]:
         article: ArticleContent | None = None
         try:
-            fetched_page = await fetch_url(source_url, self.settings)
-            article = extract_article(fetched_page.html, fetched_page.url)
+            article = await self._retrieve_article(source_url)
             lead_image = await self._fetch_lead_image(article)
             epub_path = generate_epub(article, self.settings.artifacts_dir, lead_image=lead_image)
             return article, epub_path
@@ -75,6 +80,42 @@ class Worker:
                 transient=True,
                 normalized_title=article.title if article else None,
             ) from exc
+
+    async def _retrieve_article(self, source_url: str) -> ArticleContent:
+        tried_browser = False
+        try:
+            fetched_page = await fetch_url(source_url, self.settings)
+        except FetchError as exc:
+            if should_retry_in_browser(self.settings, status_code=exc.status_code):
+                tried_browser = True
+                logger.info(
+                    "retrying article retrieval in browser",
+                    extra={"source_url": source_url, "fallback_reason": f"status_code:{exc.status_code}"},
+                )
+                fetched_page = await fetch_url_in_browser(source_url, self.settings)
+            else:
+                raise
+        else:
+            if should_retry_in_browser(self.settings, page=fetched_page):
+                tried_browser = True
+                logger.info(
+                    "retrying article retrieval in browser",
+                    extra={"source_url": source_url, "fallback_reason": "interstitial"},
+                )
+                fetched_page = await fetch_url_in_browser(source_url, self.settings)
+
+        try:
+            return extract_article(fetched_page.html, fetched_page.url)
+        except ExtractionError as exc:
+            if tried_browser or not self.settings.browser_fetch_enabled:
+                raise
+
+            logger.info(
+                "retrying article retrieval in browser",
+                extra={"source_url": source_url, "fallback_reason": "extraction_failed"},
+            )
+            browser_page = await fetch_url_in_browser(source_url, self.settings)
+            return extract_article(browser_page.html, browser_page.url)
 
     async def _process_job(self, job: JobRecord, user: UserRecord) -> tuple[ArticleContent, Path]:
         article: ArticleContent | None = None

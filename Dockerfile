@@ -8,7 +8,8 @@ WORKDIR /app
 COPY pyproject.toml README.md ./
 COPY send_to_kindle ./send_to_kindle
 
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir . \
+    && python -m playwright install --with-deps chromium
 
 COPY .env.example ./
 COPY config/users.example.yaml ./config/users.example.yaml

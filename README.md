@@ -6,6 +6,7 @@ Private service that accepts article URLs, converts them into EPUB files, and em
 - FastAPI endpoint for queueing article URLs.
 - SQLite-backed job queue processed by an in-process background worker.
 - Article extraction with `trafilatura`.
+- Automatic browser fallback for blocked or JS-heavy article pages that defeat normal HTTP fetches.
 - Text-first EPUB generation with optional lead image support.
 - SMTP delivery to Kindle email addresses.
 - Single-container Docker deployment via Docker Compose.
@@ -19,6 +20,8 @@ Private service that accepts article URLs, converts them into EPUB files, and em
    - `STK_SMTP_USERNAME`
    - `STK_SMTP_PASSWORD`
    - `STK_SMTP_SENDER`
+   - Optional: `STK_BROWSER_FETCH_ENABLED`
+   - Optional: `STK_BROWSER_FETCH_TIMEOUT_SECONDS`
    - `STK_USERS_CONFIG_PATH` if you want your user file somewhere other than `./config/users.yaml`
 4. Copy `config/users.example.yaml` to `config/users.yaml`.
 5. Replace `token_hash` with `sha256(<your-api-token>)`, for example:
@@ -118,10 +121,13 @@ Once that image exists, Unraid only needs:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install .
+python -m playwright install chromium
 send-to-kindle api
 ```
 
 Local runs also read `./.env` automatically if that file exists in the repo root, so the SMTP settings from the quick-start flow apply outside Docker too.
+
+The browser install step is required for browser fallback support because blocked or JS-heavy pages may be retried in headless Chromium.
 
 When running outside Docker, the app stores its data under the current working directory by default:
 - `./data/send_to_kindle.db`
@@ -133,3 +139,4 @@ When running outside Docker, the app stores its data under the current working d
 - Authentication is static bearer-token based.
 - User definitions are loaded from `config/users.yaml` on process start.
 - Generated EPUB files are kept temporarily for retry/debug and cleaned up by the background worker.
+- Article URLs are fetched with a normal HTTP client first and automatically retried in headless Chromium when the source blocks HTTP retrieval, serves an interstitial page, or needs client-side rendering before readable extraction succeeds.

@@ -31,6 +31,8 @@ class Settings:
     retry_backoff_seconds: int
     retention_hours: int
     user_agent: str
+    browser_fetch_enabled: bool
+    browser_fetch_timeout_seconds: float
     log_level: str
 
 
@@ -98,6 +100,8 @@ def load_settings() -> Settings:
             "STK_USER_AGENT",
             "Mozilla/5.0 (compatible; send-to-kindle/0.1; +https://example.invalid)",
         ),
+        browser_fetch_enabled=_get_bool_env("STK_BROWSER_FETCH_ENABLED", True),
+        browser_fetch_timeout_seconds=float(os.getenv("STK_BROWSER_FETCH_TIMEOUT_SECONDS", "30")),
         log_level=os.getenv("STK_LOG_LEVEL", "INFO"),
     )
 

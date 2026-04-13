@@ -7,12 +7,15 @@ from tempfile import NamedTemporaryFile
 from typing import Optional
 from zoneinfo import ZoneInfo
 
+from bs4 import BeautifulSoup
 from ebooklib import epub
 
 from send_to_kindle.models import ArticleContent
 
 
 PACIFIC_TIMEZONE = ZoneInfo("America/Los_Angeles")
+PRE_BLOCK_STYLE = "white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; font-family: monospace; font-size: 0.95em; margin: 1em 0;"
+INLINE_CODE_STYLE = "font-family: monospace;"
 
 
 def generate_epub(article: ArticleContent, output_dir: Path, lead_image: Optional[tuple[bytes, str]] = None) -> Path:
@@ -31,7 +34,7 @@ def generate_epub(article: ArticleContent, output_dir: Path, lead_image: Optiona
     if article.published_at:
         intro_lines.append(f"<p><strong>Published:</strong> {_format_published_at(article.published_at)}</p>")
 
-    body_html = "\n".join(intro_lines) + article.content_html
+    body_html = _style_preformatted_content("\n".join(intro_lines) + article.content_html)
     chapter = epub.EpubHtml(title=article.title, file_name="article.xhtml", lang="en")
     chapter.content = f"<h1>{article.title}</h1>{body_html}"
     book.add_item(chapter)
@@ -67,6 +70,17 @@ def _image_name(content_type: str, image_bytes: bytes) -> Optional[str]:
     if extension not in {"jpg", "png", "gif", "webp"}:
         return None
     return f"cover.{extension}"
+
+
+def _style_preformatted_content(content_html: str) -> str:
+    soup = BeautifulSoup(content_html, "html.parser")
+    for pre_block in soup.find_all("pre"):
+        existing_style = pre_block.get("style", "").strip()
+        pre_block["style"] = f"{existing_style} {PRE_BLOCK_STYLE}".strip()
+    for code_tag in soup.find_all("code"):
+        existing_style = code_tag.get("style", "").strip()
+        code_tag["style"] = f"{existing_style} {INLINE_CODE_STYLE}".strip()
+    return str(soup)
 
 
 def _format_published_at(value: str) -> str:
