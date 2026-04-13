@@ -1,6 +1,6 @@
 services:
   api:
-    image: ${STK_IMAGE:-ghcr.io/your-github-user/send-to-kindle:latest}
+    image: ${STK_IMAGE:-ghcr.io/tmargo101/send-to-kindle:latest}
     command: ["api", "--host", "0.0.0.0", "--port", "6122"]
     env_file:
       - .env
@@ -15,7 +15,7 @@ services:
     restart: unless-stopped
 
   worker:
-    image: ${STK_IMAGE:-ghcr.io/your-github-user/send-to-kindle:latest}
+    image: ${STK_IMAGE:-ghcr.io/tmargo101/send-to-kindle:latest}
     command: ["worker"]
     env_file:
       - .env

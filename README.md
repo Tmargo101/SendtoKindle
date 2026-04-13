@@ -70,7 +70,7 @@ These steps are for the simpler Unraid path using a prebuilt image.
    - `STK_SMTP_SENDER`
    Add one more line for the image name:
    ```text
-   STK_IMAGE=ghcr.io/YOUR-GITHUB-USER/send-to-kindle:latest
+   STK_IMAGE=ghcr.io/tmargo101/send-to-kindle:latest
    ```
 
 4. Create your user config.
@@ -143,7 +143,7 @@ If you want Unraid to pull an image instead of building from source, publish thi
 
 This repo now includes a GitHub Actions workflow that pushes to:
 ```text
-ghcr.io/<your-github-user>/send-to-kindle:latest
+ghcr.io/tmargo101/send-to-kindle:latest
 ```
 
 The workflow file is:
