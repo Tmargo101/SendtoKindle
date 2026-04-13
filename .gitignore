@@ -5,3 +5,5 @@ __pycache__/
 config/users.yaml
 data/
 artifacts/
+build/
+send_to_kindle.egg-info/

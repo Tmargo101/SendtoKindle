@@ -1,2 +1,0 @@
-[console_scripts]
-send-to-kindle = send_to_kindle.main:main
