@@ -4,11 +4,11 @@ Private service that accepts article URLs, converts them into EPUB files, and em
 
 ## Features
 - FastAPI endpoint for queueing article URLs.
-- SQLite-backed job queue shared by API and worker services.
+- SQLite-backed job queue processed by an in-process background worker.
 - Article extraction with `trafilatura`.
 - Text-first EPUB generation with optional lead image support.
 - SMTP delivery to Kindle email addresses.
-- Dockerized API and worker deployment via Docker Compose.
+- Single-container Docker deployment via Docker Compose.
 
 ## Quick start
 1. Use Python 3.12+ for local runs, or use Docker.
@@ -85,9 +85,9 @@ That guide is intentionally separate from the source-build workflow above and fo
 - first-run health checks and test article validation
 
 Why Compose Manager instead of a single Unraid Docker template:
-- this app runs as two containers, `api` and `worker`
-- `docker-compose.image.yml` keeps both services in sync while still using the published GHCR image
-- that makes Compose the clearest supported Unraid path with the least guesswork
+- it still gives you a clean, reproducible deployment for the app image, env file, and volume mounts
+- it maps well to Unraid appdata folder layouts
+- that keeps the supported Unraid path explicit with the least guesswork
 
 ## Publishing a prebuilt image
 If you want Unraid to pull an image instead of building from source, publish this repo's Docker image first.
@@ -119,7 +119,6 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install .
 send-to-kindle api
-send-to-kindle worker
 ```
 
 When running outside Docker, the app stores its data under the current working directory by default:
@@ -131,4 +130,4 @@ When running outside Docker, the app stores its data under the current working d
 - Only public `http` and `https` article URLs are supported.
 - Authentication is static bearer-token based.
 - User definitions are loaded from `config/users.yaml` on process start.
-- Generated EPUB files are kept temporarily for retry/debug and cleaned up by the worker.
+- Generated EPUB files are kept temporarily for retry/debug and cleaned up by the background worker.

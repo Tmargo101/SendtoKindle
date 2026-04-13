@@ -24,11 +24,11 @@ class Worker:
         self.jobs = jobs
         self.users = users
 
-    async def run_forever(self) -> None:
-        while True:
+    async def run_forever(self, stop_event: asyncio.Event | None = None) -> None:
+        while stop_event is None or not stop_event.is_set():
             did_work = await self.run_once()
             if not did_work:
-                await asyncio.sleep(self.settings.worker_poll_interval_seconds)
+                await self._wait_for_next_poll(stop_event)
 
     async def run_once(self) -> bool:
         job = self.jobs.claim_next_job()
@@ -57,19 +57,31 @@ class Worker:
             )
         return True
 
-    async def _process_job(self, job: JobRecord, user: UserRecord) -> tuple[ArticleContent, Path]:
+    async def create_epub(self, source_url: str) -> tuple[ArticleContent, Path]:
         article: ArticleContent | None = None
         try:
-            fetched_page = await fetch_url(job.source_url, self.settings)
+            fetched_page = await fetch_url(source_url, self.settings)
             article = extract_article(fetched_page.html, fetched_page.url)
             lead_image = await self._fetch_lead_image(article)
             epub_path = generate_epub(article, self.settings.artifacts_dir, lead_image=lead_image)
-            await send_epub(self.settings, user, article, epub_path)
             return article, epub_path
         except FetchError as exc:
             raise ProcessingFailure(str(exc), transient=exc.transient) from exc
         except ExtractionError as exc:
             raise ProcessingFailure(str(exc), transient=False) from exc
+        except Exception as exc:
+            raise ProcessingFailure(
+                "Unexpected processing failure",
+                transient=True,
+                normalized_title=article.title if article else None,
+            ) from exc
+
+    async def _process_job(self, job: JobRecord, user: UserRecord) -> tuple[ArticleContent, Path]:
+        article: ArticleContent | None = None
+        try:
+            article, epub_path = await self.create_epub(job.source_url)
+            await send_epub(self.settings, user, article, epub_path)
+            return article, epub_path
         except DeliveryError as exc:
             raise ProcessingFailure(
                 str(exc),
@@ -99,6 +111,19 @@ class Worker:
             path = Path(raw_path)
             if path.exists():
                 path.unlink(missing_ok=True)
+
+    async def _wait_for_next_poll(self, stop_event: asyncio.Event | None) -> None:
+        if stop_event is None:
+            await asyncio.sleep(self.settings.worker_poll_interval_seconds)
+            return
+
+        try:
+            await asyncio.wait_for(
+                stop_event.wait(),
+                timeout=self.settings.worker_poll_interval_seconds,
+            )
+        except TimeoutError:
+            return
 
     def _resolve_user(self, user_id: str) -> UserRecord:
         try:

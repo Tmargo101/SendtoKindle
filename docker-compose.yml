@@ -1,5 +1,5 @@
 services:
-  api:
+  app:
     build: .
     image: send-to-kindle:local
     command: ["api", "--host", "0.0.0.0", "--port", "6122"]
@@ -7,19 +7,6 @@ services:
       - .env
     ports:
       - "6122:6122"
-    volumes:
-      - ./data:/app/data
-      - ./artifacts:/app/artifacts
-      - ./config/users.yaml:/app/config/users.yaml:ro
-    depends_on:
-      - worker
-
-  worker:
-    build: .
-    image: send-to-kindle:local
-    command: ["worker"]
-    env_file:
-      - .env
     volumes:
       - ./data:/app/data
       - ./artifacts:/app/artifacts

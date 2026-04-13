@@ -8,11 +8,10 @@ It assumes:
 - you want persistent data under `/mnt/user/appdata/`
 
 ## Why this path
-This project runs as two containers:
-- `api` accepts article requests
-- `worker` fetches articles, creates EPUB files, and emails them
+This project now runs as a single container:
+- `app` serves the API and runs the background article processor in the same process
 
-Because both containers need the same `.env`, user config, database, and artifacts paths, the supported Unraid path is `docker-compose.image.yml` rather than a single-container template.
+The supported Unraid path is still `docker-compose.image.yml` because it keeps the image, env file, mounts, and restart policy together in one place.
 
 ## Files you need
 Copy these files from the repo:
@@ -120,8 +119,8 @@ docker compose -f docker-compose.image.yml up -d
 ```
 
 This starts:
-- `api` on port `6122`
-- `worker` in the background for article processing
+- `app` on port `6122`
+- the built-in background worker for article processing
 
 If port `6122` is already in use on your Unraid box, change the host side of `6122:6122` in `docker-compose.image.yml`.
 
