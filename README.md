@@ -33,6 +33,38 @@ Private service that accepts article URLs, converts them into EPUB files, and em
      -d '{"url":"https://example.com/article"}'
    ```
 
+## GHCR image workflow
+If you do not want to copy the Python source code to your server, use the published Docker image instead.
+
+Published image:
+```text
+ghcr.io/tmargo101/send-to-kindle:latest
+```
+
+Use this file for image-based deployment:
+```text
+docker-compose.image.yml
+```
+
+Basic steps:
+1. Copy these files to your server:
+   - `docker-compose.image.yml`
+   - `.env`
+   - `config/users.yaml`
+2. Create these folders next to them:
+   - `data/`
+   - `artifacts/`
+3. Set this in `.env`:
+   ```text
+   STK_IMAGE=ghcr.io/tmargo101/send-to-kindle:latest
+   ```
+4. Start the stack:
+   ```bash
+   docker compose -f docker-compose.image.yml up -d
+   ```
+
+This workflow is useful for Unraid or any host where you want to pull a ready-made image instead of building from source.
+
 ## Unraid setup
 There are now two ways to deploy this:
 - `docker-compose.yml`: builds the image from source on the host
