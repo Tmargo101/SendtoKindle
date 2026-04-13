@@ -38,11 +38,11 @@ DEFAULT_APP_NAME = "send-to-kindle"
 
 
 def load_settings() -> Settings:
-    base_dir = Path(os.getenv("STK_BASE_DIR", ".")).resolve()
-    data_dir = Path(os.getenv("STK_DATA_DIR", base_dir / "data")).resolve()
-    artifacts_dir = Path(os.getenv("STK_ARTIFACTS_DIR", base_dir / "artifacts")).resolve()
-    database_path = Path(os.getenv("STK_DATABASE_PATH", data_dir / "send_to_kindle.db")).resolve()
-    users_config_path = Path(os.getenv("STK_USERS_CONFIG_PATH", base_dir / "config" / "users.yaml")).resolve()
+    base_dir = Path(os.getenv("STK_BASE_DIR") or Path.cwd()).resolve()
+    data_dir = Path(os.getenv("STK_DATA_DIR") or (base_dir / "data")).resolve()
+    artifacts_dir = Path(os.getenv("STK_ARTIFACTS_DIR") or (base_dir / "artifacts")).resolve()
+    database_path = Path(os.getenv("STK_DATABASE_PATH") or (data_dir / "send_to_kindle.db")).resolve()
+    users_config_path = Path(os.getenv("STK_USERS_CONFIG_PATH") or (base_dir / "config" / "users.yaml")).resolve()
 
     return Settings(
         app_name=os.getenv("STK_APP_NAME", DEFAULT_APP_NAME),

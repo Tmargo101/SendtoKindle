@@ -16,6 +16,8 @@ class ApiAuthTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp_dir = tempfile.TemporaryDirectory()
         base_path = Path(self.temp_dir.name)
+        self.original_cwd = Path.cwd()
+        os.chdir(base_path)
         config_dir = base_path / "config"
         config_dir.mkdir(parents=True, exist_ok=True)
         users_path = config_dir / "users.yaml"
@@ -33,11 +35,7 @@ class ApiAuthTests(unittest.TestCase):
             ),
             encoding="utf-8",
         )
-        os.environ["STK_BASE_DIR"] = str(base_path)
         os.environ["STK_USERS_CONFIG_PATH"] = str(users_path)
-        os.environ["STK_DATA_DIR"] = str(base_path / "data")
-        os.environ["STK_ARTIFACTS_DIR"] = str(base_path / "artifacts")
-        os.environ["STK_DATABASE_PATH"] = str(base_path / "data" / "test.db")
 
         get_settings.cache_clear()
         get_user_registry.cache_clear()
@@ -51,6 +49,7 @@ class ApiAuthTests(unittest.TestCase):
         get_settings.cache_clear()
         get_user_registry.cache_clear()
         get_job_store.cache_clear()
+        os.chdir(self.original_cwd)
         self.temp_dir.cleanup()
 
     def test_valid_token_enqueues_job(self) -> None:

@@ -12,26 +12,35 @@ Private service that accepts article URLs, converts them into EPUB files, and em
 
 ## Quick start
 1. Use Python 3.12+ for local runs, or use Docker.
-2. Copy `.env.example` to `.env` and fill in SMTP settings.
-3. Copy `config/users.example.yaml` to `config/users.yaml`.
-4. Replace `token_hash` with `sha256(<your-api-token>)`, for example:
+2. Copy `.env.example` to `.env`.
+3. Set these values in `.env`:
+   - `STK_SMTP_HOST`
+   - `STK_SMTP_PORT`
+   - `STK_SMTP_USERNAME`
+   - `STK_SMTP_PASSWORD`
+   - `STK_SMTP_SENDER`
+   - `STK_USERS_CONFIG_PATH` if you want your user file somewhere other than `./config/users.yaml`
+4. Copy `config/users.example.yaml` to `config/users.yaml`.
+5. Replace `token_hash` with `sha256(<your-api-token>)`, for example:
    ```bash
    python3 - <<'PY'
    import hashlib
    print(hashlib.sha256(b"replace-me").hexdigest())
    PY
    ```
-5. Start the stack:
+6. Start the stack:
    ```bash
    docker compose up --build
    ```
-6. Queue an article:
+7. Queue an article:
    ```bash
    curl -X POST http://localhost:6122/v1/articles \
      -H 'Authorization: Bearer <your-api-token>' \
      -H 'Content-Type: application/json' \
      -d '{"url":"https://example.com/article"}'
    ```
+
+For normal deployments, the service now uses built-in defaults for the database, artifact, retry, and logging paths/settings. Advanced `STK_*` overrides still work, but they are intentionally omitted from the default setup flow.
 
 ## GHCR image workflow
 If you do not want to copy the Python source code to your server, use the published Docker image instead.
@@ -54,11 +63,12 @@ Basic steps:
 2. Create these folders next to them:
    - `data/`
    - `artifacts/`
-3. Set this in `.env`:
+3. Fill in the SMTP values in `.env`.
+4. Optionally set this in `.env` if you want a non-default image tag:
    ```text
    STK_IMAGE=ghcr.io/tmargo101/send-to-kindle:latest
    ```
-4. Start the stack:
+5. Start the stack:
    ```bash
    docker compose -f docker-compose.image.yml up -d
    ```
@@ -94,16 +104,14 @@ These steps are for the simpler Unraid path using a prebuilt image.
 
 3. Create your environment file.
    Copy `.env.example` to `.env`, then edit the values.
-   The important SMTP settings are:
+   Set these values:
    - `STK_SMTP_HOST`
    - `STK_SMTP_PORT`
    - `STK_SMTP_USERNAME`
    - `STK_SMTP_PASSWORD`
    - `STK_SMTP_SENDER`
-   Add one more line for the image name:
-   ```text
-   STK_IMAGE=ghcr.io/tmargo101/send-to-kindle:latest
-   ```
+   - `STK_USERS_CONFIG_PATH` can stay at its default unless you mount the user file somewhere else.
+   - `STK_IMAGE` is optional because `docker-compose.image.yml` already defaults to `ghcr.io/tmargo101/send-to-kindle:latest`.
 
 4. Create your user config.
    Copy `config/users.example.yaml` to `config/users.yaml`.
@@ -161,6 +169,7 @@ These steps are for the simpler Unraid path using a prebuilt image.
 - Put everything under `appdata` so your database and generated files survive container restarts.
 - The service writes SQLite data to `data/` and temporary EPUB files to `artifacts/`.
 - If port `6122` is already in use on Unraid, change the left side of `6122:6122` in `docker-compose.image.yml`.
+- If you need custom paths, worker timing, or logging overrides, the legacy advanced `STK_*` variables still work even though they are no longer part of the normal setup docs.
 - If your Kindle does not receive the file, check:
   - SMTP credentials
   - That your sender address is allowed by your mail provider
@@ -202,6 +211,11 @@ pip install .
 send-to-kindle api
 send-to-kindle worker
 ```
+
+When running outside Docker, the app stores its data under the current working directory by default:
+- `./data/send_to_kindle.db`
+- `./artifacts/`
+- `./config/users.yaml`
 
 ## Notes
 - Only public `http` and `https` article URLs are supported.
