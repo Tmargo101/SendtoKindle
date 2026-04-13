@@ -5,11 +5,13 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 import yaml
 from fastapi.testclient import TestClient
 
 from send_to_kindle.dependencies import get_job_store, get_settings, get_user_registry
+from send_to_kindle.models import ArticleContent
 
 
 class ApiAuthTests(unittest.TestCase):
@@ -72,3 +74,36 @@ class ApiAuthTests(unittest.TestCase):
             json={"url": "ftp://example.com/article"},
         )
         self.assertEqual(response.status_code, 422)
+
+    def test_valid_token_downloads_epub(self) -> None:
+        article = ArticleContent(
+            source_url="https://example.com/article",
+            title="Test Article",
+            author=None,
+            site_name=None,
+            published_at=None,
+            content_html="<p>Hello</p>",
+            lead_image_url=None,
+        )
+        epub_path = Path(self.temp_dir.name) / "test-article.epub"
+        epub_path.write_bytes(b"epub-bytes")
+
+        with patch(
+            "send_to_kindle.api.app.Worker.create_epub",
+            new=AsyncMock(return_value=(article, epub_path)),
+        ):
+            response = self.client.post(
+                "/v1/articles/download",
+                headers={"Authorization": "Bearer secret-token"},
+                json={"url": "https://example.com/article"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"], "application/epub+zip")
+        self.assertIn('attachment; filename="test-article.epub"', response.headers["content-disposition"])
+        self.assertEqual(response.content, b"epub-bytes")
+        self.assertFalse(epub_path.exists())
+
+    def test_download_missing_token_rejected(self) -> None:
+        response = self.client.post("/v1/articles/download", json={"url": "https://example.com/article"})
+        self.assertEqual(response.status_code, 401)

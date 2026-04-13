@@ -72,3 +72,14 @@ class WorkerTests(unittest.TestCase):
         refreshed = self.store.get_job(job.job_id)
         self.assertEqual(refreshed.status, "sent")
         self.assertEqual(refreshed.normalized_title, "Example Article")
+
+    def test_run_forever_stops_when_stop_event_is_set(self) -> None:
+        stop_event = asyncio.Event()
+
+        async def run_worker() -> None:
+            task = asyncio.create_task(self.worker.run_forever(stop_event))
+            await asyncio.sleep(0.02)
+            stop_event.set()
+            await asyncio.wait_for(task, timeout=1)
+
+        asyncio.run(run_worker())

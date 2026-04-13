@@ -4,11 +4,11 @@ Private service that accepts article URLs, converts them into EPUB files, and em
 
 ## Features
 - FastAPI endpoint for queueing article URLs.
-- SQLite-backed job queue shared by API and worker services.
+- SQLite-backed job queue processed by an in-process background worker.
 - Article extraction with `trafilatura`.
 - Text-first EPUB generation with optional lead image support.
 - SMTP delivery to Kindle email addresses.
-- Dockerized API and worker deployment via Docker Compose.
+- Single-container Docker deployment via Docker Compose.
 
 ## Quick start
 1. Use Python 3.12+ for local runs, or use Docker.
@@ -75,109 +75,19 @@ Basic steps:
 
 This workflow is useful for Unraid or any host where you want to pull a ready-made image instead of building from source.
 
-## Unraid setup
-There are now two ways to deploy this:
-- `docker-compose.yml`: builds the image from source on the host
-- `docker-compose.image.yml`: pulls a prebuilt image, which is the simpler Unraid path
+## Unraid deployment
+Use [docs/unraid.md](docs/unraid.md) for the recommended Unraid-first setup.
 
-These steps are for the simpler Unraid path using a prebuilt image.
+That guide is intentionally separate from the source-build workflow above and focuses on:
+- Unraid Compose Manager with `docker-compose.image.yml`
+- exact `/mnt/user/appdata/send-to-kindle/` folder layout
+- GHCR image configuration
+- first-run health checks and test article validation
 
-1. On Unraid, create a folder for the app data.
-   A simple layout is:
-   ```text
-   /mnt/user/appdata/send-to-kindle/
-   ```
-   Inside it, create these folders and files:
-   ```text
-   docker-compose.image.yml
-   .env
-   data/
-   artifacts/
-   config/users.yaml
-   ```
-   You do not need to copy the Python source code when using the prebuilt image.
-
-2. Copy these files to Unraid:
-   - `.env.example`
-   - `docker-compose.image.yml`
-   - `config/users.example.yaml`
-
-3. Create your environment file.
-   Copy `.env.example` to `.env`, then edit the values.
-   Set these values:
-   - `STK_SMTP_HOST`
-   - `STK_SMTP_PORT`
-   - `STK_SMTP_USERNAME`
-   - `STK_SMTP_PASSWORD`
-   - `STK_SMTP_SENDER`
-   - `STK_USERS_CONFIG_PATH` can stay at its default unless you mount the user file somewhere else.
-   - `STK_IMAGE` is optional because `docker-compose.image.yml` already defaults to `ghcr.io/tmargo101/send-to-kindle:latest`.
-
-4. Create your user config.
-   Copy `config/users.example.yaml` to `config/users.yaml`.
-
-5. Create an API token hash.
-   Pick any secret token you want to use from your phone or scripts.
-   Run this command and save the output:
-   ```bash
-   python3 - <<'PY'
-   import hashlib
-   print(hashlib.sha256(b"replace-with-your-token").hexdigest())
-   PY
-   ```
-   Put that value into `config/users.yaml` as `token_hash`.
-
-6. Add your Kindle email.
-   In `config/users.yaml`, set:
-   - `kindle_email` to your Kindle Send-to-Kindle address
-   - `user_id` to any short name you want
-
-7. Start the containers.
-   From the project folder, run:
-   ```bash
-   docker compose -f docker-compose.image.yml up -d
-   ```
-
-8. Confirm the API is running.
-   Open:
-   ```text
-   http://YOUR-UNRAID-IP:6122/healthz
-   ```
-   You should see:
-   ```json
-   {"status":"ok"}
-   ```
-
-9. Send a test article.
-   Replace `YOUR_TOKEN` with the plain token you chose earlier:
-   ```bash
-   curl -X POST http://YOUR-UNRAID-IP:6122/v1/articles \
-     -H 'Authorization: Bearer YOUR_TOKEN' \
-     -H 'Content-Type: application/json' \
-     -d '{"url":"https://example.com/article"}'
-   ```
-
-10. Check job status.
-   The first request returns a `jobId`.
-   Use it here:
-   ```bash
-   curl http://YOUR-UNRAID-IP:6122/v1/jobs/JOB_ID \
-     -H 'Authorization: Bearer YOUR_TOKEN'
-   ```
-
-### Unraid notes
-- Put everything under `appdata` so your database and generated files survive container restarts.
-- The service writes SQLite data to `data/` and temporary EPUB files to `artifacts/`.
-- If port `6122` is already in use on Unraid, change the left side of `6122:6122` in `docker-compose.image.yml`.
-- If you need custom paths, worker timing, or logging overrides, the legacy advanced `STK_*` variables still work even though they are no longer part of the normal setup docs.
-- If your Kindle does not receive the file, check:
-  - SMTP credentials
-  - That your sender address is allowed by your mail provider
-  - That the sender address is approved in Amazon's Send-to-Kindle settings
-- After you change `config/users.yaml` or `.env`, restart the stack:
-  ```bash
-  docker compose -f docker-compose.image.yml up -d
-  ```
+Why Compose Manager instead of a single Unraid Docker template:
+- it still gives you a clean, reproducible deployment for the app image, env file, and volume mounts
+- it maps well to Unraid appdata folder layouts
+- that keeps the supported Unraid path explicit with the least guesswork
 
 ## Publishing a prebuilt image
 If you want Unraid to pull an image instead of building from source, publish this repo's Docker image first.
@@ -209,7 +119,6 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install .
 send-to-kindle api
-send-to-kindle worker
 ```
 
 When running outside Docker, the app stores its data under the current working directory by default:
@@ -221,4 +130,4 @@ When running outside Docker, the app stores its data under the current working d
 - Only public `http` and `https` article URLs are supported.
 - Authentication is static bearer-token based.
 - User definitions are loaded from `config/users.yaml` on process start.
-- Generated EPUB files are kept temporarily for retry/debug and cleaned up by the worker.
+- Generated EPUB files are kept temporarily for retry/debug and cleaned up by the background worker.

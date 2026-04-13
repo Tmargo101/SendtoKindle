@@ -38,7 +38,7 @@ def generate_epub(article: ArticleContent, output_dir: Path, lead_image: Optiona
             book.set_cover(image_name, image_bytes)
 
     book.toc = (chapter,)
-    book.spine = ["nav", chapter]
+    book.spine = [chapter]
     book.add_item(epub.EpubNav())
     book.add_item(epub.EpubNcx())
 

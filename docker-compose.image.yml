@@ -1,24 +1,11 @@
 services:
-  api:
+  app:
     image: ${STK_IMAGE:-ghcr.io/tmargo101/send-to-kindle:latest}
     command: ["api", "--host", "0.0.0.0", "--port", "6122"]
     env_file:
       - .env
     ports:
       - "6122:6122"
-    volumes:
-      - ./data:/app/data
-      - ./artifacts:/app/artifacts
-      - ./config/users.yaml:/app/config/users.yaml:ro
-    depends_on:
-      - worker
-    restart: unless-stopped
-
-  worker:
-    image: ${STK_IMAGE:-ghcr.io/tmargo101/send-to-kindle:latest}
-    command: ["worker"]
-    env_file:
-      - .env
     volumes:
       - ./data:/app/data
       - ./artifacts:/app/artifacts
